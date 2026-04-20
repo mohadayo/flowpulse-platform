@@ -1,0 +1,53 @@
+version: "3.8"
+
+services:
+  event-collector:
+    build: ./services/event-collector
+    ports:
+      - "${COLLECTOR_PORT:-8001}:8001"
+    environment:
+      - COLLECTOR_PORT=8001
+      - PROCESSOR_HOST=event-processor
+      - PROCESSOR_PORT=8002
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - flowpulse
+
+  event-processor:
+    build: ./services/event-processor
+    ports:
+      - "${PROCESSOR_PORT:-8002}:8002"
+    environment:
+      - PROCESSOR_PORT=8002
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8002/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - flowpulse
+
+  analytics-api:
+    build: ./services/analytics-api
+    ports:
+      - "${ANALYTICS_PORT:-8003}:8003"
+    environment:
+      - ANALYTICS_PORT=8003
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8003/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - flowpulse
+
+networks:
+  flowpulse:
+    driver: bridge
